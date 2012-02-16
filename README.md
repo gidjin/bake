@@ -7,6 +7,6 @@ first pass so feel free to send me feed backr: bake (at) magneticorange.com
 
 ### Sample usage
 
-bake server:start
-bake list
-bake db:migrate
+  bake server:start
+  bake list
+  bake db:migrate
