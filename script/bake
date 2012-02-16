@@ -1,0 +1,34 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use v5.14;
+
+use AppConfig;
+use Bake;
+
+my $config = AppConfig->new;
+$config->define('verbose!');
+$config->getopt();
+
+say "Verbose Mode On" if $config->verbose;
+
+my @tasks = Bake->tasks;
+
+my $task = shift @ARGV;
+my ($throwaway,$namespace,$method) = $task =~ /
+    (
+        ([^:]*)     # Not a :
+        (?:\:\:?)   # Followed by one or two
+    )?              #
+    ([^:]*)         # not a :
+/x;
+
+$namespace = Bake::find_namespace($namespace);
+$method = Bake::find_task($namespace,$method);
+$task = '&'.$namespace.'::'.$method;
+
+say $task if $config->verbose;
+eval ($task);
+say $@ if $@;
