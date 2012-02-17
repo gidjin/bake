@@ -16,30 +16,37 @@ our $ignore = qr/$temp/;
 
 sub find_namespace {
     my $namespace = shift;
+    my $return = __PACKAGE__;
     if ($namespace) {
+        my $found = 0;
         for my $ns (__PACKAGE__->tasks) {
             if ($ns =~ /(?<!bake)$namespace/i) {
-                $namespace = $ns;
-                last;
+                $return = $ns;
+                $found++;
             }
         }
+        if ($found > 1) {
+            die 'Ambiguous Namespace: '.$namespace."\n";
+        }
     }
-    else {
-        $namespace = __PACKAGE__;
-    }
-    return $namespace;
+    return $return;
 }
 
 sub find_task {
     my $namespace = shift;
     my $method = shift || 'default';
+    my $return = $method;
+    my $found = 0;
     for my $md ($namespace->meta->get_all_method_names) {
         if ($md =~ /$method/i) {
-            $method=$md;
-            last;
+            $return=$md;
+            $found++;
         }
     }
-    return $method;
+    if ($found > 1) {
+        die 'Ambiguous Method Name: '.$method."\n";
+    }
+    return $return;
 }
 
 sub list {
