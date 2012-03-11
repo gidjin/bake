@@ -44,6 +44,10 @@ sub create_command {
     return $namespace.'->'.$method;
 }
 
+sub default {
+    say 'Appears that I could not find that method? Is the BakeFile in your current dir or @INC?';
+}
+
 sub find_task {
     my $self = shift;
     my $namespace = shift;
@@ -57,6 +61,7 @@ sub find_task {
             last if defined $return;
         }
     }
+    $namespace = 'Bake' unless defined $return;
     $return = 'default' unless defined $return;
     return ($namespace,$return);
 }

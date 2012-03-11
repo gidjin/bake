@@ -1,4 +1,6 @@
 package App::Bake;
+1;
+__END__
 # ABSTRACT: a really awesome library
 
 =head1 SYNOPSIS
@@ -19,3 +21,4 @@ This method returns a reason.
    * L<Bake>
    * L<Bake::MyTasks>
    * L<App::Bake>
+
