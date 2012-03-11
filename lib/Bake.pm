@@ -15,42 +15,80 @@ my $temp = '^_\w+|'.( join "|",@ignore);
 our $ignore = qr/$temp/;
 
 sub find_namespace {
+    my $self = shift;
     my $namespace = shift;
-    my $return = __PACKAGE__;
+    my $return = $self;
     if ($namespace) {
-        my $found = 0;
-        for my $ns (__PACKAGE__->tasks) {
+        my @found = ();
+        for my $ns ($self->tasks) {
             if ($ns =~ /(?<!bake)$namespace/i) {
                 $return = $ns;
-                $found++;
+                $found[scalar @found]=$ns;
             }
         }
-        if ($found > 1) {
-            die 'Ambiguous Namespace: '.$namespace."\n";
+        if (scalar @found > 1) {
+            warn 'Ambiguous Namespace: '.$namespace.' ('.(join ',',@found).")\n";
+            # if ambigous return default
+            $return = $self;
         }
     }
     return $return;
+}
+
+sub create_command {
+    my $self = shift;
+    my $namespace = shift;
+    my $method = shift;
+
+    ($namespace,$method) = $self->find_task($namespace,$method);
+    return $namespace.'->'.$method;
 }
 
 sub find_task {
+    my $self = shift;
     my $namespace = shift;
-    my $method = shift || 'default';
-    my $return = $method;
-    my $found = 0;
-    for my $md ($namespace->meta->get_all_method_names) {
-        if ($md =~ /$method/i) {
-            $return=$md;
-            $found++;
+    my $method = shift;
+    my $return = $self->find_specific_task($namespace,$method);
+    # if not found search other spaces
+    if (!defined $return && (lc $namespace eq 'bake')) {
+        for my $ns (sort $self->tasks) {
+            $namespace = $ns;
+            $return = $self->find_specific_task($namespace,$method);
+            last if defined $return;
         }
     }
-    if ($found > 1) {
-        die 'Ambiguous Method Name: '.$method."\n";
+    $return = 'default' unless defined $return;
+    return ($namespace,$return);
+}
+
+sub find_specific_task {
+    my $self = shift;
+    my $namespace = shift;
+    my $method = shift || 'default';
+    my $return = undef;
+    my @found = ();
+    eval {
+        for my $md ($namespace->meta->get_all_method_names) {
+            if ($md =~ /$method/i) {
+                $return=$md;
+                $found[scalar @found]=$md;
+            }
+        }
+    };
+    if (scalar @found > 1) {
+        warn 'Ambiguous Method Name: '.$method.' ('.(join ',',@found).")\n";
+        $return = undef;
     }
     return $return;
 }
 
+sub info {
+    say "Perl Bake Version 0.0.1";
+}
+
 sub list {
-    for my $ns (__PACKAGE__->tasks) {
+    my $self = shift;
+    for my $ns ($self->tasks) {
         eval {
             my @tasks = $ns->meta->get_all_method_names;
             if (@tasks) {

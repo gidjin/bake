@@ -2,21 +2,16 @@
 
 use strict;
 use warnings;
-
 use v5.14;
-
-use AppConfig;
 use Bake;
 
-my $config = AppConfig->new;
-$config->define('verbose!');
-$config->getopt();
-
-say "Verbose Mode On" if $config->verbose;
-
+# Get all pluggable task classes
 my @tasks = Bake->tasks;
 
+# Read in the command
 my $task = shift @ARGV;
+
+# parse command
 my ($throwaway,$namespace,$method) = $task =~ /
     (
         ([^:]*)     # Not a :
@@ -25,10 +20,13 @@ my ($throwaway,$namespace,$method) = $task =~ /
     ([^:]*)         # not a :
 /x;
 
-$namespace = Bake::find_namespace($namespace);
-$method = Bake::find_task($namespace,$method);
-$task = '&'.$namespace.'::'.$method;
+# search for a matching namespace
+$namespace = Bake->find_namespace($namespace);
+# search for a matching command
+$method = Bake->create_command($namespace,$method);
+die "Cannot Run Task $task\n" unless defined $method;
 
-say $task if $config->verbose;
-eval ($task);
+# Run the code
+eval ($method);
+# Say any errors;
 say $@ if $@;
