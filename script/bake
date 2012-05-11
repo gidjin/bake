@@ -3,22 +3,29 @@
 use strict;
 use warnings;
 use v5.14;
+use AppConfig;
 use Bake;
 
 # check for a BakeFile and import it if there is one
 eval {
     require BakeFile;
-    BakeFile->import();
+    BakeFile->import;
 };
 
-# Get all pluggable task classes
-my @tasks = Bake->tasks;
+my $config = AppConfig->new;
+$config->define('todos');
+$config->file($ENV{HOME}.'/.bakerc');
+
+if ($config->get('todos')) {
+    require App::Bake::Todo;
+    App::Bake::Todo->import;
+}
 
 # Read in the command
-my $task = shift @ARGV;
+my $bake = shift @ARGV;
 
 # parse command
-my ($throwaway,$namespace,$method) = $task =~ /
+my ($throwaway,$namespace,$method) = $bake =~ /
     (
         ([^:]*)     # Not a :
         (?:\:\:?)   # Followed by one or two
@@ -30,7 +37,7 @@ my ($throwaway,$namespace,$method) = $task =~ /
 $namespace = Bake->find_namespace($namespace);
 # search for a matching command
 $method = Bake->create_command($namespace,$method);
-die "Cannot Run Task $task\n" unless defined $method;
+die "Cannot Run Bake $bake\n" unless defined $method;
 
 # Run the code
 eval ($method);

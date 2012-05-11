@@ -22,14 +22,27 @@ sub timer {
     my $self = shift;
     my $min = shift @ARGV || 2;
     my $time = time;
-    $time += 2*60;
+    my $sec = 0;
     say "Waiting $min minutes";
+    $time += $min*60;
+    if ($min < 1) {
+        $sec = $min*60;
+        $min = 0;
+    }
     $|=1;
     while ($time > time) {
-        print ".";
+        printf '%02d:%02d',$min,$sec;
+        if ($sec) {
+            $sec--;
+        }
+        elsif ($min) {
+            $min--;
+            $sec=59;
+        }
         sleep(1);
+        print "\b"x6;
     }
-    say "Timer done";
+    say "\aTimer done";
 }
 
 __PACKAGE__->meta->make_immutable;

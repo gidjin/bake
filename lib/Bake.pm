@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 package Bake;
 use Moose;
-use Module::Pluggable require => 1, sub_name => 'tasks', search_path => ["Bake"];
+use Module::Pluggable require => 1, sub_name => 'bakes', search_path => ["Bake"];
 use v5.14;
 
 =head1 NAME
@@ -20,7 +20,7 @@ sub find_namespace {
     my $return = $self;
     if ($namespace) {
         my @found = ();
-        for my $ns ($self->tasks) {
+        for my $ns ($self->bakes) {
             if ($ns =~ /(?<!bake)$namespace/i) {
                 $return = $ns;
                 $found[scalar @found]=$ns;
@@ -40,7 +40,7 @@ sub create_command {
     my $namespace = shift;
     my $method = shift;
 
-    ($namespace,$method) = $self->find_task($namespace,$method);
+    ($namespace,$method) = $self->find_bake($namespace,$method);
     return $namespace.'->'.$method;
 }
 
@@ -48,16 +48,16 @@ sub default {
     say 'Appears that I could not find that method? Is the BakeFile in your current dir or @INC?';
 }
 
-sub find_task {
+sub find_bake {
     my $self = shift;
     my $namespace = shift;
     my $method = shift;
-    my $return = $self->find_specific_task($namespace,$method);
+    my $return = $self->find_specific_bake($namespace,$method);
     # if not found search other spaces
     if (!defined $return && (lc $namespace eq 'bake')) {
-        for my $ns (sort $self->tasks) {
+        for my $ns (sort $self->bakes) {
             $namespace = $ns;
-            $return = $self->find_specific_task($namespace,$method);
+            $return = $self->find_specific_bake($namespace,$method);
             last if defined $return;
         }
     }
@@ -66,7 +66,7 @@ sub find_task {
     return ($namespace,$return);
 }
 
-sub find_specific_task {
+sub find_specific_bake {
     my $self = shift;
     my $namespace = shift;
     my $method = shift || 'default';
@@ -88,17 +88,17 @@ sub find_specific_task {
 }
 
 sub info {
-    say "Perl Bake Version 0.0.1";
+    say "Perl Bake Version 0.0.2";
 }
 
 sub list {
     my $self = shift;
-    for my $ns ($self->tasks) {
+    for my $ns ($self->bakes) {
         eval {
-            my @tasks = $ns->meta->get_all_method_names;
-            if (@tasks) {
+            my @bakes = $ns->meta->get_all_method_names;
+            if (@bakes) {
                 say $ns;
-                say "\t".(join "\n\t",(grep { unless (/$ignore/) { $_ } else { undef } } @tasks));
+                say "\t".(join "\n\t",(grep { unless (/$ignore/) { $_ } else { undef } } @bakes));
             }
         }
     }
