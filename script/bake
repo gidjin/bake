@@ -5,41 +5,44 @@ use warnings;
 use v5.14;
 use AppConfig;
 use Bake;
+use Bake::Parser;
+use YAML qw/Dump/;
 
-# check for a BakeFile and import it if there is one
-eval {
-    require BakeFile;
-    BakeFile->import;
-};
+my $conf = AppConfig->new;
+$conf->define('list');
+$conf->define('dryrun',{DEFAULT=>0});
+$conf->define('debug');
+$conf->define('defaults=s',{DEFAULT=>$ENV{HOME}.'/.bakes'});
+$conf->define('filename|default-file=s',{DEFAULT=>'bakes'});
+$conf->file($ENV{HOME}.'/.bakerc');
+$conf->getopt();
 
-my $config = AppConfig->new;
-$config->define('todos');
-$config->file($ENV{HOME}.'/.bakerc');
+my $cmd = shift @ARGV;
 
-if ($config->get('todos')) {
-    require App::Bake::Todo;
-    App::Bake::Todo->import;
+unless (&process_bakes($conf->filename,$cmd)) {
+    if (-e $conf->defaults && -r $conf->defaults) {
+        &process_bakes($conf->defaults,$cmd);
+    }
+    else {
+        say 'No valid file named "'.$conf->filename.'" found';
+    }
 }
 
-# Read in the command
-my $bake = shift @ARGV;
+exit;
 
-# parse command
-my ($throwaway,$namespace,$method) = $bake =~ /
-    (
-        ([^:]*)     # Not a :
-        (?:\:\:?)   # Followed by one or two
-    )?              #
-    ([^:]*)         # not a :
-/x;
-
-# search for a matching namespace
-$namespace = Bake->find_namespace($namespace);
-# search for a matching command
-$method = Bake->create_command($namespace,$method);
-die "Cannot Run Bake $bake\n" unless defined $method;
-
-# Run the code
-eval ($method);
-# Say any errors;
-say $@ if $@;
+sub process_bakes {
+    my $file = shift;
+    my $cmd = shift // undef;
+    my $par = Bake::Parser->new();
+    my $ret = 0;
+    if (-e $file && -r $file) {
+        open (FILE, $file) or die "Can't read $!\n";
+        my $inst = $par->parse(join('',<FILE>));
+        say Dump($inst) if $conf->debug;
+        close(FILE);
+        $inst->dryrun($conf->dryrun) if $conf->dryrun;
+        $ret = 1;
+        $inst->run($cmd,@ARGV);
+    }
+    return $ret;
+}

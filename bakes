@@ -1,0 +1,26 @@
+# Variables can be defined and used in command arguments
+$Var = 12
+# % prefix indicates a choice. Only one of the options will be run and you will be given a choice
+# Optionally you can pass the choice in when running bake
+bake list { ls -lart }
+#bake date
+bake runhw { hw }
+
+sub hw {
+    say "My name is: ".$command->name;
+    say join(":",@args);
+    say "two";
+    for (1..3) {
+        say $_.") counting";
+    }
+}
+
+bake start_mongo { /usr/local/bin/mongod run --config /usr/local/Cellar/mongodb/2.0.4-x86_64/mongod.conf }
+bake hi {
+    say "Hi";
+}
+#bake cleanm2 {
+#    use File::Path qw/remove_tree/;
+#    my $m2 = '/Users/jgedeon/.m2/repository/com/x';
+#    remove_tree($m2) if (-d $m2);
+#}
