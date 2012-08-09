@@ -2,47 +2,58 @@
 
 use strict;
 use warnings;
-use v5.14;
+use 5.014002;
+use version; our $VERSION = qv('0.1.0');
+use English qw( -no_match_vars );
+use autodie qw( open close );
 use AppConfig;
-use Bake;
 use Bake::Parser;
 use YAML qw/Dump/;
 
+## no critic (ProhibitUnlessBlocks)
+
 my $conf = AppConfig->new;
-$conf->define('list');
-$conf->define('dryrun',{DEFAULT=>0});
 $conf->define('debug');
-$conf->define('defaults=s',{DEFAULT=>$ENV{HOME}.'/.bakes'});
-$conf->define('filename|default-file=s',{DEFAULT=>'bakes'});
-$conf->file($ENV{HOME}.'/.bakerc');
-$conf->getopt();
+$conf->define( 'defaults=s', { DEFAULT => $ENV{HOME} . '/.bakes' } );
+$conf->define( 'filename|default-file=s', { DEFAULT => 'bakes' } );
+my $conf_file = $ENV{HOME} . '/.bakerc';
+if ( -f $conf_file && -r $conf_file ) {
+    $conf->file( $conf_file );
+}
 
 my $cmd = shift @ARGV;
 
-unless (&process_bakes($conf->filename,$cmd)) {
-    if (-e $conf->defaults && -r $conf->defaults) {
-        &process_bakes($conf->defaults,$cmd);
+unless ( process_bakes( $conf->filename, $cmd ) ) {
+    if ( -e $conf->defaults && -r $conf->defaults ) {
+        process_bakes( $conf->defaults, $cmd );
     }
     else {
-        say 'No valid file named "'.$conf->filename.'" found';
+        say 'No valid file named "' . $conf->filename . '" found';
     }
 }
 
 exit;
 
 sub process_bakes {
-    my $file = shift;
-    my $cmd = shift // undef;
-    my $par = Bake::Parser->new();
-    my $ret = 0;
-    if (-e $file && -r $file) {
-        open (FILE, $file) or die "Can't read $!\n";
-        my $inst = $par->parse(join('',<FILE>));
-        say Dump($inst) if $conf->debug;
-        close(FILE);
-        $inst->dryrun($conf->dryrun) if $conf->dryrun;
+    my $file    = shift;
+    my $command = shift // undef;
+    my $par     = Bake::Parser->new();
+    my $ret     = 0;
+    if ( -e $file && -r $file ) {
+        my $fh;
+        open $fh, '<', $file;
+        my @lines = <$fh>
+          or die "Couldn't read data $OS_ERROR\n";
+        close $fh;
+        my $inst = $par->parse( join q{}, @lines );
+        if ( $conf->debug ) {
+            say Dump($inst);
+        }
+        #if ( $conf->dryrun ) {
+        #    $inst->dryrun( $conf->dryrun );
+        #}
         $ret = 1;
-        $inst->run($cmd,@ARGV);
+        $inst->run( $command, @ARGV );
     }
     return $ret;
 }

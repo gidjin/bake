@@ -2,11 +2,13 @@
 package Bake::Command;
 
 use v5.14;
-use Moose;
+use Moo;
 
 has 'name' => ( is => 'rw' );
 has 'command' => ( is => 'rw' );
+has 'subroutine' => ( is => 'rw' );
 has 'variables' => ( is => 'rw', default => sub { {} } );
+has 'description' => ( is => 'rw', default => sub {''} );
 
 sub replace_vars {
     my $self = shift;

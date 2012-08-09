@@ -2,11 +2,16 @@
 $Var = 12
 # % prefix indicates a choice. Only one of the options will be run and you will be given a choice
 # Optionally you can pass the choice in when running bake
-bake list { ls -lart }
+## list
+# list long
+bake list ' ls -lart '
 #bake date
 bake runhw { hw }
 
-sub hw {
+## hw
+# Details go here
+# of the desc
+bake hw {
     say "My name is: ".$command->name;
     say join(":",@args);
     say "two";
@@ -15,7 +20,9 @@ sub hw {
     }
 }
 
-bake start_mongo { /usr/local/bin/mongod run --config /usr/local/Cellar/mongodb/2.0.4-x86_64/mongod.conf }
+## start_mongo
+# Start the mongo server
+bake start_mongo ' /usr/local/bin/mongod run --config /usr/local/Cellar/mongodb/2.0.4-x86_64/mongod.conf '
 bake hi {
     say "Hi";
 }

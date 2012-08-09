@@ -2,7 +2,7 @@
 package Bake::Instructions;
 
 use v5.14;
-use Moose;
+use Moo;
 use YAML qw/Dump/;
 
 use Bake::Command;
@@ -11,12 +11,14 @@ has 'dryrun' => ( is => 'rw' );
 has 'subs' => ( is => 'rw' );
 has 'commands' => ( is => 'rw' );
 has 'variables' => ( is => 'rw' );
+has 'descs' => ( is => 'rw' );
 
 sub BUILD {
     my $self = shift;
     $self->subs({});
     $self->commands({});
     $self->variables({});
+    $self->descs({});
 }
 
 sub routine {
@@ -24,7 +26,7 @@ sub routine {
     my $name = shift;
     my $code = shift;
 
-    $self->subs->{$name} = sub { my $command = shift; my @args = @_; eval $code; say $@ if $@; };
+    $self->subs->{$name} = sub { my $command = shift; our @args = @_; eval $code; say $@ if $@; };
 }
 
 sub variable {
@@ -35,12 +37,29 @@ sub variable {
     $self->variables->{$var} = $val;
 }
 
+sub description {
+    my $self = shift;
+    my $cmd = shift;
+    my $desc = shift;
+
+    $desc = join ("\n  ",@$desc);
+    if (exists $self->commands->{$cmd}) {
+        $self->commands->{$cmd}->description($desc);
+    }
+    else {
+        $self->descs->{$cmd} = $desc;
+    }
+}
+
 sub command {
     my $self = shift;
     my $cmd = shift;
     my $name = shift || scalar keys %{$self->commands};
     
     my $command = Bake::Command->new({name=>$name,command=>$cmd});
+    if (exists $self->descs->{$name}) {
+        $command->description($self->descs->{$name});
+    }
     $self->commands->{$name} = $command;
 }
 
@@ -53,7 +72,21 @@ sub run {
     if (scalar keys %{$self->commands}) {
         my @i = ();
         for my $choice (keys %{$self->commands}) {
-            say scalar @i.') '.$choice ."\n\t".$self->commands->{$choice}->command;
+            my $message =  scalar @i.') '.$choice ."\n  ";
+            my $sep = 0;
+            if ($self->commands->{$choice}->description ne '') {
+                $message .= $self->commands->{$choice}->description;
+                $sep = 1;
+            }
+            if (!exists $self->subs->{$choice}) {
+                $message .= "\n  ---\n  " if $sep;
+                $message .= $self->commands->{$choice}->command;
+                $message .= "\n";
+            }
+            elsif ($sep) {
+                $message .= "\n";
+            }
+            say $message;
             push @i,$choice;
         }
         print 'Choose (0-'.(scalar(keys %{$self->commands}) - 1).'): ';

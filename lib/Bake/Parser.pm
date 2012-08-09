@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 package Bake::Parser;
 use v5.14;
-use Moose;
+use Moo;
 use Parse::RecDescent;
 use Bake::Instructions;
 use YAML qw/Dump/;
@@ -21,32 +21,23 @@ sub BUILD {
 { my $instructions = new Bake::Instructions(); }
 instructions    : any(s) { $return = $instructions }
 any             : sub(s) 
-                | bake(s) | variable(s) | comment(s)
+                | bake(s) | variable(s) | description(s) | comment(s)
 sub             : "sub" m{[a-zA-Z0-9_]+} <perl_codeblock>
                     { $instructions->routine($item{__PATTERN1__},$item{__DIRECTIVE1__}); }
-cmdname         : m{[a-zA-Z0-9.-/]+} arg(s?)
-                    { 
-                        $return = $item{__PATTERN1__};
-                        if (scalar @{$item{"arg(s?)"}}) {
-                            $return .= " ".(join(" ",@{$item{"arg(s?)"}}));
-                        }
-                    }
-arg             : m{(?:\\w|\\.|-|_|=|\'|"|:|/)+}
-                    { $return = $item{__PATTERN1__} }
-                | m{\\$\\w+}
-                    { $return = $item{__PATTERN1__} }
 bakename        : m{[a-zA-Z0-9.-/_]+}
                     { $return = $item{__PATTERN1__} }
-bake            : /bake/ bakename(1) "{" cmdname(1) comment(?) "}"
-                    { $instructions->command($item{"cmdname(1)"}[0],$item{"bakename(1)"}[0]) }
-                | /bake/ bakename(1) <perl_codeblock>
+bake            : "bake" bakename(1) /\'\s*/ /[^\']+/ /\s*\'/
+                    { $instructions->command($item{__PATTERN2__},$item{"bakename(1)"}[0]); }
+                | "bake" bakename(1) <perl_codeblock>
                     {
                         $instructions->command($item{"bakename(1)"}[0],$item{"bakename(1)"}[0]);
                         $instructions->routine($item{"bakename(1)"}[0],$item{__DIRECTIVE1__});
                     }
 variable        : /\\$\\w+/ "=" m|.+|
                     {$instructions->variable($item{__PATTERN1__},$item{__PATTERN2__})}
-comment         : /#.*/
+description     : "##" bakename(1) comment(s)
+                    {$instructions->description($item{"bakename(1)"}[0],$item{"comment(s)"});}
+comment         : /#(?!#)/ /.*/
 ';
     $self->_set_parser(new Parse::RecDescent($grammer));
 }
