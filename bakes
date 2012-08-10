@@ -1,12 +1,10 @@
-# Variables can be defined and used in command arguments
-$Var = 12
 # % prefix indicates a choice. Only one of the options will be run and you will be given a choice
 # Optionally you can pass the choice in when running bake
 ## list
 # list long
 bake list ' ls -lart '
 #bake date
-bake runhw { hw }
+#bake runhw { hw }
 
 ## hw
 # Details go here

@@ -21,7 +21,7 @@ sub BUILD {
 { my $instructions = new Bake::Instructions(); }
 instructions    : any(s) { $return = $instructions }
 any             : sub(s) 
-                | bake(s) | variable(s) | description(s) | comment(s)
+                | bake(s) | description(s) | comment(s)
 sub             : "sub" m{[a-zA-Z0-9_]+} <perl_codeblock>
                     { $instructions->routine($item{__PATTERN1__},$item{__DIRECTIVE1__}); }
 bakename        : m{[a-zA-Z0-9.-/_]+}
@@ -33,12 +33,17 @@ bake            : "bake" bakename(1) /\'\s*/ /[^\']+/ /\s*\'/
                         $instructions->command($item{"bakename(1)"}[0],$item{"bakename(1)"}[0]);
                         $instructions->routine($item{"bakename(1)"}[0],$item{__DIRECTIVE1__});
                     }
-variable        : /\\$\\w+/ "=" m|.+|
-                    {$instructions->variable($item{__PATTERN1__},$item{__PATTERN2__})}
+opt             : "opt" /\'\s*/ /[^\']+/ /\s*\'/
+                    {
+                        $instructions->option($item{__PATTERN2__});
+                    }
 description     : "##" bakename(1) comment(s)
                     {$instructions->description($item{"bakename(1)"}[0],$item{"comment(s)"});}
 comment         : /#(?!#)/ /.*/
 ';
+#| bake(s) | variable(s) | description(s) | comment(s)
+#variable        : /\\$\\w+/ "=" m|.+|
+#                    {$instructions->variable($item{__PATTERN1__},$item{__PATTERN2__})}
     $self->_set_parser(new Parse::RecDescent($grammer));
 }
 

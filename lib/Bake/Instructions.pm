@@ -10,15 +10,15 @@ use Bake::Command;
 has 'dryrun' => ( is => 'rw' );
 has 'subs' => ( is => 'rw' );
 has 'commands' => ( is => 'rw' );
-has 'variables' => ( is => 'rw' );
 has 'descs' => ( is => 'rw' );
+has 'opts' => ( is => 'rw' );
 
 sub BUILD {
     my $self = shift;
     $self->subs({});
     $self->commands({});
-    $self->variables({});
     $self->descs({});
+    $self->opts([]);
 }
 
 sub routine {
@@ -26,15 +26,25 @@ sub routine {
     my $name = shift;
     my $code = shift;
 
-    $self->subs->{$name} = sub { my $command = shift; our @args = @_; eval $code; say $@ if $@; };
+    my $subroutine = sub { 
+        our $command = shift;
+        our @args = @_;
+        eval $code;
+        say $@ if $@; 
+    };
+    if (exists $self->commands->{$name}) {
+        $self->commands->{$name}->subroutine($subroutine);
+    }
+    else {
+        $self->subs->{$name} = $subroutine;
+    }
 }
 
-sub variable {
+sub options {
     my $self = shift;
-    my $var = shift;
-    my $val = shift;
+    my $opt = shift;
 
-    $self->variables->{$var} = $val;
+    push $self->opts, $opt;
 }
 
 sub description {
@@ -60,13 +70,16 @@ sub command {
     if (exists $self->descs->{$name}) {
         $command->description($self->descs->{$name});
     }
+    if (exists $self->subs->{$name}) {
+        $command->subroutine($self->subs->{$name});
+    }
     $self->commands->{$name} = $command;
 }
 
-sub run {
+
+sub choice {
     my $self = shift;
-    my $torun = shift // undef;
-    my @args = @_;
+    my $command = undef;
 
     # show choices
     if (scalar keys %{$self->commands}) {
@@ -90,35 +103,28 @@ sub run {
             push @i,$choice;
         }
         print 'Choose (0-'.(scalar(keys %{$self->commands}) - 1).'): ';
-        my $choice = $torun;
-        unless (defined $choice) {
-            $choice = <STDIN>;
-            chomp($choice);
-        }
-        else {
-            say $choice;
-        }
-        if (defined $choice && $choice !~ /^\d+$/) {
-            # Search keys
-            my $search = '|'.join('|',sort keys %{$self->commands}).'|';
-            ($choice) = $search =~ /\|(\w*?$choice\w*?)\|/;
-        }
-        elsif (defined $choice && $choice =~ /^\d+$/ && $choice >= 0 && $choice < scalar @i) {
+        my $choice = <STDIN>;
+        chomp($choice);
+        if (defined $choice && $choice =~ /^\d+$/ && $choice >= 0 && $choice < scalar @i) {
             $choice = $i[$choice];
         }
-        if (defined $choice && $choice ne '' && exists $self->commands->{$choice}) {
-            $self->commands->{$choice}->variables($self->variables);
-            my $cmd = $self->commands->{$choice}->replace_vars;
-            if (exists $self->subs->{$cmd}) {
-                my $sub = $self->subs->{$cmd};
-                say "Running $cmd sub";
-                &$sub($self->commands->{$choice},@args) unless $self->dryrun;
-            }
-            else {
-                exec($cmd) unless($self->dryrun);
-            }
-        }
+        $command = $self->find($choice);
     }
+    return $command;
+}
+sub find {
+    my $self = shift;
+    my $torun = shift // undef;
+    my $command = undef;
+    if (scalar keys %{$self->commands}) {
+        if (defined $torun && $torun !~ /^\d+$/) {
+            # Search keys
+            my $search = '|'.join('|',sort keys %{$self->commands}).'|';
+            ($torun) = $search =~ /\|(\w*?$torun\w*?)\|/;
+        }
+        $command = $self->commands->{$torun};
+    }
+    return $command;
 }
 
 __PACKAGE__->meta->make_immutable;

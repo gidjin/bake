@@ -7,22 +7,29 @@ use Moo;
 has 'name' => ( is => 'rw' );
 has 'command' => ( is => 'rw' );
 has 'subroutine' => ( is => 'rw' );
-has 'variables' => ( is => 'rw', default => sub { {} } );
 has 'description' => ( is => 'rw', default => sub {''} );
 
-sub replace_vars {
+sub execute {
     my $self = shift;
+    my @args = @_;
 
-    my $cmd = $self->command;
-    my %vars = %{$self->variables};
-
-    for my $var (keys %vars) {
-        my $matcher = quotemeta($var);
-        $matcher = qr($matcher);
-        $cmd  =~ s/$matcher/$vars{$var}/;
+    say "Baking ".$self->name;
+    if (defined $self->description && $self->description ne '') {
+        say '  '.$self->description;
     }
-
-    return $cmd;
+    if (defined $self->subroutine) {
+        say '  '.$self->command."(".join(",",@args).")";
+        my $sub = $self->subroutine;
+        &$sub($self,@args);
+    }
+    else {
+        my $cmd = $self->command;
+        if (@args) {
+            $cmd .= ' '.join(' ',@args);
+        }
+        say '  '.$cmd;
+        exec $cmd;
+    }
 }
 
 __PACKAGE__->meta->make_immutable;

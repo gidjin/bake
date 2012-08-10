@@ -49,11 +49,17 @@ sub process_bakes {
         if ( $conf->debug ) {
             say Dump($inst);
         }
-        #if ( $conf->dryrun ) {
-        #    $inst->dryrun( $conf->dryrun );
-        #}
-        $ret = 1;
-        $inst->run( $command, @ARGV );
+        my $cmd = undef;
+        if (defined $command && $command ne '') {
+            $cmd = $inst->find($command);
+        }
+        else {
+            $cmd = $inst->choice( $command );
+        }
+        if (defined $cmd) {
+            $cmd->execute(@ARGV);
+            $ret = 1;
+        }
     }
     return $ret;
 }
