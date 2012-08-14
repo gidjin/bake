@@ -2,7 +2,6 @@
 package Bake::Parser;
 use v5.14;
 use Moo;
-use Regexp::Grammars;
 use Bake::Instructions;
 use Bake::Command;
 use YAML qw/Dump/;
@@ -15,6 +14,7 @@ has 'grammar' => (
 sub BUILD {
     my $self = shift;
     # Bake file grammar
+    use Regexp::Grammars;
     my $grammar =qr@
         <file>
         <rule: file>            <[instructions]>*
