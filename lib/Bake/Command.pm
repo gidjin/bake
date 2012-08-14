@@ -15,10 +15,10 @@ sub execute {
 
     say "Baking ".$self->name;
     if (defined $self->description && $self->description ne '') {
-        say '  '.$self->description;
+        say $self->description;
     }
     if (defined $self->subroutine) {
-        say '  '.$self->command."(".join(",",@args).")";
+        say '> '.$self->command."(".join(",",@args).")";
         my $sub = $self->subroutine;
         &$sub($self,@args);
     }
@@ -27,7 +27,7 @@ sub execute {
         if (@args) {
             $cmd .= ' '.join(' ',@args);
         }
-        say '  '.$cmd;
+        say '> '.$cmd;
         exec $cmd;
     }
 }

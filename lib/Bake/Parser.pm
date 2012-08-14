@@ -2,54 +2,80 @@
 package Bake::Parser;
 use v5.14;
 use Moo;
-use Parse::RecDescent;
+use Regexp::Grammars;
 use Bake::Instructions;
+use Bake::Command;
 use YAML qw/Dump/;
 
-has 'parser' => (
+has 'grammar' => (
     is      => 'ro',
-    writer  => '_set_parser'
+    writer  => '_set_grammar'
 );
-
-#$::RD_HINT=1;
-#$::RD_TRACE=1;
 
 sub BUILD {
     my $self = shift;
-    my $grammer =q'
-# Bake file grammer
-{ my $instructions = new Bake::Instructions(); }
-instructions    : any(s) { $return = $instructions }
-any             : sub(s) 
-                | bake(s) | description(s) | comment(s)
-sub             : "sub" m{[a-zA-Z0-9_]+} <perl_codeblock>
-                    { $instructions->routine($item{__PATTERN1__},$item{__DIRECTIVE1__}); }
-bakename        : m{[a-zA-Z0-9.-/_]+}
-                    { $return = $item{__PATTERN1__} }
-bake            : "bake" bakename(1) /\'\s*/ /[^\']+/ /\s*\'/
-                    { $instructions->command($item{__PATTERN2__},$item{"bakename(1)"}[0]); }
-                | "bake" bakename(1) <perl_codeblock>
-                    {
-                        $instructions->command($item{"bakename(1)"}[0],$item{"bakename(1)"}[0]);
-                        $instructions->routine($item{"bakename(1)"}[0],$item{__DIRECTIVE1__});
-                    }
-opt             : "opt" /\'\s*/ /[^\']+/ /\s*\'/
-                    {
-                        $instructions->option($item{__PATTERN2__});
-                    }
-description     : "##" bakename(1) comment(s)
-                    {$instructions->description($item{"bakename(1)"}[0],$item{"comment(s)"});}
-comment         : /#(?!#)/ /.*/
-';
-#| bake(s) | variable(s) | description(s) | comment(s)
-#variable        : /\\$\\w+/ "=" m|.+|
-#                    {$instructions->variable($item{__PATTERN1__},$item{__PATTERN2__})}
-    $self->_set_parser(new Parse::RecDescent($grammer));
+    # Bake file grammar
+    my $grammar =qr@
+        <file>
+        <rule: file>            <[instructions]>*
+        <rule: instructions>    <comment> | <bake> | <startdesc>
+        <rule: comment>         \#(?!\#).*$
+        <rule: startdesc>       \#\# <name>
+        <rule: description>     <startdesc> <[comment]>*
+        <rule: bake>            <description>? <[options]>* bake <name> <command>
+        <rule: command>         ' <execute> ' | <perlcode>
+        <rule: perlcode>        \{ (?: <perlcode> | [^{}])* \}
+        <rule: name>            [a-zA-Z0-9.-/_]+
+        <rule: execute>         .*?
+        <rule: options>          opt ' <getopt> '
+        <rule: getopt>          (?:[^'])* # ' for vim
+    @xm;
+    $self->_set_grammar($grammar);
 }
 
 sub parse {
     my $self = shift;
     my $text = shift;
-    return $self->parser->instructions($text);
+    my %parsed = ();
+    my $instructions = undef;
+    if ($text =~ $self->grammar) {
+        %parsed = %/;
+        # transform hash into array of instruction objects
+        #say Dump(\%parsed);
+        $instructions = new Bake::Instructions();
+        for my $inst (@{$parsed{file}->{instructions}}) {
+            if (exists $inst->{bake}) {
+                my $bake = new Bake::Command({name=>$inst->{bake}->{name}});
+                my $exec = $inst->{bake}->{command}->{execute};
+                my $perl = (ref $inst->{bake}->{command}->{perlcode} eq 'HASH') 
+                    ? $inst->{bake}->{command}->{perlcode}->{''} 
+                    : $inst->{bake}->{command}->{perlcode};
+                my $desc = $inst->{bake}->{description}->{''};
+                if (defined $exec && $exec ne '') {
+                    $bake->command($exec);
+                }
+                elsif (defined $perl && $perl ne '') {
+                    $bake->command($bake->name);
+                    my $subroutine = sub {
+                        our $command = shift;
+                        our @args = @_;
+                        eval $perl;
+                        say $@ if $@;
+                    };
+                    $bake->subroutine($subroutine);
+                }
+                if (defined $desc && $desc ne '') {
+                    $bake->description($desc);
+                }
+                $instructions->add($bake);
+            }
+        }
+    }
+    else {
+        die "Couldn't Parse Text\n";
+    }
+    return $instructions;
 }
+
+
 __PACKAGE__->meta->make_immutable;
