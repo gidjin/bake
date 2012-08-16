@@ -22,13 +22,14 @@ sub BUILD {
         <rule: comment>         \#(?!\#).*$
         <rule: startdesc>       \#\# <name>
         <rule: description>     <startdesc> <[comment]>*
-        <rule: bake>            <description>? <[options]>* bake <name> <command>
+        <rule: bake>            <[metabake]>* bake <name> <command>
+        <rule: metabake>        <description> | <option> | <use>
         <rule: command>         ' <execute> ' | <perlcode>
         <rule: perlcode>        \{ (?: <perlcode> | [^{}])* \}
         <rule: name>            [a-zA-Z0-9.-/_]+
         <rule: execute>         .*?
-        <rule: options>          opt ' <getopt> '
-        <rule: getopt>          (?:[^'])* # ' for vim
+        <rule: option>          opt ' <execute> '
+        <rule: use>             use <execute> ;
     @xm;
     $self->_set_grammar($grammar);
 }
@@ -50,22 +51,34 @@ sub parse {
                 my $perl = (ref $inst->{bake}->{command}->{perlcode} eq 'HASH') 
                     ? $inst->{bake}->{command}->{perlcode}->{''} 
                     : $inst->{bake}->{command}->{perlcode};
-                my $desc = $inst->{bake}->{description}->{''};
+                my $meta = $inst->{bake}->{metabake};
                 if (defined $exec && $exec ne '') {
                     $bake->command($exec);
                 }
                 elsif (defined $perl && $perl ne '') {
                     $bake->command($bake->name);
-                    my $subroutine = sub {
-                        our $command = shift;
-                        our @args = @_;
-                        eval $perl;
-                        say $@ if $@;
-                    };
-                    $bake->subroutine($subroutine);
+                    $bake->subroutine($perl);
                 }
-                if (defined $desc && $desc ne '') {
-                    $bake->description($desc);
+                for my $m (@$meta) {
+                    if (exists $m->{description}) {
+                        my $desc = $m->{description}->{''};
+                        if (defined $desc && $desc ne '') {
+                            $bake->description($desc);
+                        }
+                    }
+                    if (exists $m->{use}) {
+                        my $use = $m->{use}->{execute};
+                        my $param = $m->{use}->{param};
+                        if (defined $use && $use ne '') {
+                            $bake->uses->[@{$bake->uses}] = $use;
+                        }
+                    }
+                    if (exists $m->{option}) {
+                        my $option = $m->{option}->{execute};
+                        if (defined $option && $option ne '') {
+                            $bake->options->[@{$bake->options}] = $option;
+                        }
+                    }
                 }
                 $instructions->add($bake);
             }
