@@ -1,14 +1,15 @@
 #!/usr/bin/env perl
 package Bake::Command;
 
-use v5.14;
+use 5.014002;
 use Moo;
+use YAML;
 
 has 'name' => ( is => 'rw' );
 has 'command' => ( is => 'rw' );
-has 'sub' => (
+has 'code' => (
     is => 'ro',
-    writer  => '_set_sub'
+    writer  => '_set_code'
 );
 has 'description' => ( is => 'rw', default => sub {''} );
 has 'options' => ( is => 'rw', default => sub {[]} );
@@ -33,7 +34,7 @@ sub subroutine {
         eval $perl;
         say $@ if $@;
     };
-    $self->_set_sub($subroutine);
+    $self->_set_code($subroutine);
 }
 sub execute {
     my $self = shift;
@@ -46,9 +47,9 @@ sub execute {
     if (defined $self->uses && scalar @{$self->uses}) {
         say YAML::Dump({use => $self->uses});
     }
-    if (defined $self->sub) {
+    if (defined $self->code) {
         say '> '.$self->command."(".join(",",@args).")";
-        my $sub = $self->sub;
+        my $sub = $self->code;
         &$sub($self,@args);
     }
     else {
