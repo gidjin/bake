@@ -18,7 +18,6 @@ has 'uses' => ( is => 'rw', default => sub {[]} );
 sub subroutine {
     my $self = shift;
     my $perl = shift;
-    say $self;
 
     my $subroutine = sub {
         our $command = shift;
