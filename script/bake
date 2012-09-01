@@ -13,7 +13,7 @@ use YAML qw/Dump/;
 ## no critic (ProhibitUnlessBlocks)
 
 my $conf = AppConfig->new;
-$conf->define('debug');
+$conf->define('debug', {DEFAULT => 0});
 $conf->define( 'defaults=s', { DEFAULT => $ENV{HOME} . '/.bakes' } );
 $conf->define( 'filename|default-file=s', { DEFAULT => 'bakes' } );
 my $conf_file = $ENV{HOME} . '/.bakerc';
@@ -54,7 +54,10 @@ sub process_bakes {
             $cmd = $inst->find($command);
         }
         else {
-            $cmd = $inst->choice( $command );
+            $cmd = $inst->choice();
+        }
+        if ( $conf->debug ) {
+            say 'Real command: '. Dump($cmd);
         }
         if (defined $cmd) {
             $cmd->execute(@ARGV);

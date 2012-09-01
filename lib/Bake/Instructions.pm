@@ -4,7 +4,7 @@ package Bake::Instructions;
 use v5.14;
 use Moo;
 use YAML qw/Dump/;
-
+use IO::Prompter;
 use Bake::Command;
 
 has 'commands' => ( is => 'rw' );
@@ -22,6 +22,7 @@ sub add {
 
 sub choice {
     my $self = shift;
+    my $choice = shift // undef;
     my $command = undef;
 
     # show choices
@@ -35,7 +36,7 @@ sub choice {
                 $message .= $bake->description;
                 $sep = 1;
             }
-            if (!defined $bake->subroutine || $bake->subroutine eq '') {
+            if (!defined $bake->code || $bake->code eq '') {
                 $message .= "\n  ---\n" if $sep;
                 $message .= '> '.$bake->command;
                 $message .= "\n";
@@ -46,9 +47,11 @@ sub choice {
             say $message;
             push @i,$choice;
         }
-        print 'Choose (0-'.(scalar(keys %{$self->commands}) - 1).'): ';
-        my $choice = <STDIN>;
-        chomp($choice);
+        # prompt if not chosen
+        if (!defined $choice) {
+            my @choices = sort keys %{$self->commands};
+            $choice = prompt 'Choose Bake to run: ', -complete => \@choices;
+        }
         if (defined $choice && $choice =~ /^\d+$/ && $choice >= 0 && $choice < scalar @i) {
             $choice = $i[$choice];
         }

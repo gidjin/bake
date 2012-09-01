@@ -14,10 +14,12 @@ has 'code' => (
 has 'description' => ( is => 'rw', default => sub {''} );
 has 'options' => ( is => 'rw', default => sub {[]} );
 has 'uses' => ( is => 'rw', default => sub {[]} );
+has 'perl' => ( is => 'rw');
 
 sub subroutine {
     my $self = shift;
     my $perl = shift;
+    $self->perl($perl);
 
     my $subroutine = sub {
         our $command = shift;
