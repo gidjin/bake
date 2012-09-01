@@ -14,28 +14,28 @@ has 'code' => (
 has 'description' => ( is => 'rw', default => sub {''} );
 has 'options' => ( is => 'rw', default => sub {[]} );
 has 'uses' => ( is => 'rw', default => sub {[]} );
-has 'perl' => ( is => 'rw');
 
 sub subroutine {
     my $self = shift;
     my $perl = shift;
-    $self->perl($perl);
 
-    my $subroutine = sub {
-        our $command = shift;
-        for my $u (@{$command->uses}) {
-            # Require any modules asked for
-            my ($use,$param) = $u =~ /^(.*?)(?:\s(.*))?$/;
-            $param = '' unless defined $param;
-            my $require = 'require '.$use.';'.$use.'->import('.$param.');';
-            eval $require;
+    if (defined $perl && $perl ne '') {
+        my $subroutine = sub {
+            our $command = shift;
+            for my $u (@{$command->uses}) {
+                # Require any modules asked for
+                my ($use,$param) = $u =~ /^(.*?)(?:\s(.*))?$/;
+                $param = '' unless defined $param;
+                my $require = 'require '.$use.';'.$use.'->import('.$param.');';
+                eval $require;
+                say $@ if $@;
+            }
+            our @args = @_;
+            eval $perl;
             say $@ if $@;
-        }
-        our @args = @_;
-        eval $perl;
-        say $@ if $@;
-    };
-    $self->_set_code($subroutine);
+        };
+        $self->_set_code($subroutine);
+    }
 }
 sub execute {
     my $self = shift;
