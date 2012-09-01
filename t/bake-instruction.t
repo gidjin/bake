@@ -8,7 +8,7 @@ use Test::More;
 
 
 BEGIN {
-    plan tests => 12;
+    plan tests => 10;
     use_ok 'Bake::Parser';
     use_ok 'Bake::Command'; 
 }
@@ -22,13 +22,11 @@ isa_ok $inst, 'Bake::Instructions';
 my $cmd = $inst->find('list');
 isa_ok $cmd, 'Bake::Command';
 is $cmd->name, 'list';
-ok !defined $cmd->perl || $cmd->perl eq '', 'Should have no perl';
 ok !defined $cmd->code || $cmd->code eq '', 'Should have no code';
 
 $cmd = $inst->choice('list');
 isa_ok $cmd, 'Bake::Command';
 is $cmd->name, 'list';
-ok !defined $cmd->perl || $cmd->perl eq '', 'Should have no perl';
 ok !defined $cmd->code || $cmd->code eq '', 'Should have no code';
 
 __DATA__
